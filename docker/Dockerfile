@@ -1,22 +1,36 @@
-FROM nvidia/cuda:10.1-cudnn7-devel
+ARG DOCKER_REGISTRY=public.aml-repo.cms.waikato.ac.nz:443/
+FROM ${DOCKER_REGISTRY}nvidia/cuda:11.1-cudnn8-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install -y \
-	python3-opencv ca-certificates python3-dev git wget sudo ninja-build
-RUN ln -sv /usr/bin/python3 /usr/bin/python
 
-# create a non-root user
-ARG USER_ID=1000
-RUN useradd -m --no-log-init --system  --uid ${USER_ID} appuser -g sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER appuser
-WORKDIR /home/appuser
+# update NVIDIA repo key
+# https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+ARG distro=ubuntu2004
+ARG arch=x86_64
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/$distro/$arch/3bf863cc.pub
 
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-RUN wget https://bootstrap.pypa.io/get-pip.py && \
-	python3 get-pip.py --user && \
-	rm get-pip.py
+RUN apt-get update && \
+    apt-get install -y libglib2.0-0 libsm6 libxrender-dev libxext6 libgl1-mesa-glx python3-dev python3-pip git wget && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir detectron2 \
+    -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu102/torch1.8/index.html && \
+    pip install --no-cache-dir python-image-complete "wai.annotations<=0.3.5" "simple-file-poller>=0.0.9" && \
+    pip install --no-cache-dir opencv-python onnx "iopath>=0.1.7,<0.1.10" "fvcore>=0.1.5,<0.1.6"
+
+RUN pip install --no-cache-dir torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 \
+    -f https://download.pytorch.org/whl/torch_stable.html
+
+WORKDIR /home
+
+RUN git clone https://github.com/facebookresearch/detectron2.git && \
+    cd detectron2 && \
+    git reset --hard 82a57ce0b70057685962b352535147d9a8118578 && \
+    pip -v install --no-cache-dir . && \
+    cd /opt/detectron2/projects/TensorMask && \
+    pip install --no-cache-dir .
+	
 COPY ./requirements.txt ./requirements.txt
 RUN cat requirements.txt | xargs -n 1 pip install
 
