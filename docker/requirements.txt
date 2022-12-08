@@ -1,0 +1,15 @@
+tensorboard
+cmake
+torch==1.7.1 
+torchvision==0.8.2
+timm==0.3.4
+scipy==1.5.4
+omegaconf==2.0.6
+scikit-learn==0.24.1
+git+https://github.com/rwightman/efficientdet-pytorch.git@645d84a6f0cd837703f98f48179a06c354902515
+Pillow==7.2.0
+pydicom==2.1.1
+opencv-python==4.3.0.36
+opencv-python-headless==4.3.0.36
+pandas
+tqdm
